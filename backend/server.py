@@ -60,13 +60,24 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        # Send initial confirmation
+        try:
+            await websocket.send_text(json.dumps({"type": "CONNECTED", "server": "SmartStock AI"}))
+        except Exception:
+            pass
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
+        # Create a copy of the list for iteration in case we modify it while broadcasting
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                logger.warning(f"Failed to send to a websocket, removing: {e}")
+                self.disconnect(connection)
 
 manager = ConnectionManager()
 
@@ -92,12 +103,13 @@ async def shutdown_event():
 async def broadcast_scan_data():
     """Periodically check for detected items and notify clients via WebSocket."""
     last_detected = set()
+    counter = 0
     while True:
         try:
             detected = scanner.get_detected_items()
             current_ids = {r["item_data"]["item_id"] for r in detected if r["item_data"]}
             
-            # If we found new items or something changed, broadcast
+            # 1. Update detections if changed
             if current_ids != last_detected and current_ids:
                 data = []
                 for r in detected:
@@ -113,7 +125,15 @@ async def broadcast_scan_data():
                     await manager.broadcast(json.dumps({"type": "SCAN_UPDATE", "data": data}))
                 last_detected = current_ids
             elif not current_ids and last_detected:
+                # Clear detections on clients
+                await manager.broadcast(json.dumps({"type": "SCAN_UPDATE", "data": []}))
                 last_detected = set() # cleared
+            
+            # 2. Heartbeat every 10 iterations (~5 seconds) to keep things alive
+            counter += 1
+            if counter >= 10:
+                await manager.broadcast(json.dumps({"type": "HEARTBEAT", "ts": time.time()}))
+                counter = 0
             
             await asyncio.sleep(0.5) # Check every 500ms
         except Exception as e:

@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Scan, Focus, AlertTriangle, ShieldCheck, Zap, Wifi } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 
 export default function ScanPage() {
@@ -11,40 +11,65 @@ export default function ScanPage() {
   const [isConnected, setIsConnected] = useState(false)
   const [detectedItems, setDetectedItems] = useState<any[]>([])
   
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Real-time WebSocket connection to Python AI backend
   useEffect(() => {
-    let ws: WebSocket | null = null;
-    let reconnectTimer: any = null;
-
     const connect = () => {
+      if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
+        return; // Already connecting or connected
+      }
+
       try {
-        ws = new WebSocket('ws://localhost:8001/ws/scan');
+        console.log('Attempting to connect to AI Vision Backend...');
+        const ws = new WebSocket('ws://127.0.0.1:8001/ws/scan');
+        wsRef.current = ws;
         
         ws.onopen = () => {
-          console.log('Connected to AI Vision Backend');
+          console.log('Successfully connected to AI Vision Backend at 127.0.0.1:8001');
           setIsConnected(true);
-        };
-
-        ws.onmessage = (event) => {
-          const message = JSON.parse(event.data);
-          if (message.type === 'SCAN_UPDATE') {
-            setDetectedItems(message.data);
+          if (reconnectTimerRef.current) {
+            clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = null;
           }
         };
 
-        ws.onclose = () => {
-          console.log('Disconnected from AI Vision Backend');
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === 'SCAN_UPDATE') {
+              setDetectedItems(message.data);
+            } else if (message.type === 'CONNECTED') {
+              console.log('Backend confirmation:', message.server);
+            }
+          } catch (jsonErr) {
+            console.error('Failed to parse WebSocket message:', jsonErr);
+          }
+        };
+
+        ws.onclose = (event) => {
+          console.log('WebSocket connection closed:', event.code, event.reason);
           setIsConnected(false);
-          // Try to reconnect in 2 seconds
-          reconnectTimer = setTimeout(connect, 2000);
+          wsRef.current = null;
+          
+          // Try to reconnect in 3 seconds
+          if (isScanning && !reconnectTimerRef.current) {
+            reconnectTimerRef.current = setTimeout(() => {
+              reconnectTimerRef.current = null;
+              if (isScanning) connect();
+            }, 3000);
+          }
         };
 
         ws.onerror = (err) => {
-          console.error('WebSocket error:', err);
-          ws?.close();
+          // Only log error if we are not actively closing the connection ourselves
+          if (ws.readyState !== WebSocket.CLOSING && ws.readyState !== WebSocket.CLOSED) {
+             console.error('WebSocket encountered an error');
+          }
         };
       } catch (e) {
-        console.error('Connection failed:', e);
+        console.error('Failed to initialize WebSocket:', e);
       }
     };
 
@@ -53,11 +78,17 @@ export default function ScanPage() {
     }
 
     return () => {
-      if (ws) {
-        ws.onclose = null; // Prevent reconnect on unmount
-        ws.close();
+      if (wsRef.current) {
+        console.log('Cleaning up WebSocket connection...');
+        wsRef.current.onclose = null; 
+        wsRef.current.onerror = null;
+        wsRef.current.close();
+        wsRef.current = null;
       }
-      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
     };
   }, [isScanning]);
 
@@ -89,7 +120,7 @@ export default function ScanPage() {
             {isScanning && isConnected ? (
                 /* Real MJPEG Stream from Python Backend */
                 <img 
-                    src="http://localhost:8001/video_feed" 
+                    src="http://127.0.0.1:8001/video_feed" 
                     alt="AI Vision Feed" 
                     className="w-full h-full object-cover"
                 />
