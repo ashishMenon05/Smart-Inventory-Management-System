@@ -2,160 +2,167 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Scan, Focus, AlertTriangle, ShieldCheck, Zap } from 'lucide-react'
+import { Scan, Focus, AlertTriangle, ShieldCheck, Zap, Wifi } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 
 export default function ScanPage() {
   const [isScanning, setIsScanning] = useState(true)
-  const [detectedItem, setDetectedItem] = useState<{
-    id: string,
-    name: string,
-    category: string,
-    confidence: number,
-    status: string
-  } | null>(null)
-
+  const [isConnected, setIsConnected] = useState(false)
+  const [detectedItems, setDetectedItems] = useState<any[]>([])
+  
+  // Real-time WebSocket connection to Python AI backend
   useEffect(() => {
-    if (!isScanning) return
-    const timer = setTimeout(() => {
-      setDetectedItem({
-        id: "SKU-992381",
-        name: "Lithium-Ion Battery Pack",
-        category: "Electronics",
-        confidence: 99.4,
-        status: "healthy"
-      })
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [isScanning])
+    let ws: WebSocket | null = null;
+    let reconnectTimer: any = null;
+
+    const connect = () => {
+      try {
+        ws = new WebSocket('ws://localhost:8000/ws/scan');
+        
+        ws.onopen = () => {
+          console.log('Connected to AI Vision Backend');
+          setIsConnected(true);
+        };
+
+        ws.onmessage = (event) => {
+          const message = JSON.parse(event.data);
+          if (message.type === 'SCAN_UPDATE') {
+            setDetectedItems(message.data);
+          }
+        };
+
+        ws.onclose = () => {
+          console.log('Disconnected from AI Vision Backend');
+          setIsConnected(false);
+          // Try to reconnect in 2 seconds
+          reconnectTimer = setTimeout(connect, 2000);
+        };
+
+        ws.onerror = (err) => {
+          console.error('WebSocket error:', err);
+          ws?.close();
+        };
+      } catch (e) {
+        console.error('Connection failed:', e);
+      }
+    };
+
+    if (isScanning) {
+      connect();
+    }
+
+    return () => {
+      if (ws) {
+        ws.onclose = null; // Prevent reconnect on unmount
+        ws.close();
+      }
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
+  }, [isScanning]);
+
+  const mainItem = detectedItems.length > 0 ? detectedItems[0] : null;
 
   return (
     <div className="flex-1 space-y-8 p-8 pt-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">AI Scan Simulation</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">Intelligent object detection and entry matching.</p>
+          <h1 className="text-3xl font-bold tracking-tight">AI Edge Scanner</h1>
+          <p className="text-zinc-500 dark:text-zinc-400 font-sans">
+            Real-time YOLOv8 multi-QR detection via connected Python backend.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-           <Button variant={isScanning ? "primary" : "outline"} onClick={() => { setIsScanning(!isScanning); setDetectedItem(null); }}>
-             {isScanning ? "Pause Scanner" : "Start Scanner"}
+        <div className="flex items-center gap-3">
+           <Badge variant={isConnected ? "success" : "error"} className="gap-1.5 px-2.5 py-1">
+              <Wifi className={`h-3.5 w-3.5 ${isConnected ? "animate-pulse" : ""}`} />
+              {isConnected ? "Backend Live" : "Backend Offline"}
+           </Badge>
+           <Button variant={isScanning ? "primary" : "outline"} onClick={() => { setIsScanning(!isScanning); if(isScanning) setDetectedItems([]); }}>
+             {isScanning ? "Stop Scanner" : "Start Scanner"}
            </Button>
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-8 lg:grid-cols-5">
         {/* Camera Feed */}
-        <Card className="relative overflow-hidden border-zinc-800 bg-black aspect-video flex items-center justify-center">
-            {/* Simulation Overlay */}
-            {isScanning && (
-              <div className="absolute inset-0 pointer-events-none">
-                 <div className="absolute top-1/2 left-0 w-full h-px bg-emerald-500/50 shadow-[0_0_10px_2px_rgba(16,185,129,0.5)] animate-scan-line" />
-                 
-                 {/* Detection Box */}
-                 {detectedItem && (
-                   <div className="absolute top-[20%] left-[30%] right-[30%] bottom-[30%] border-2 border-emerald-500 rounded-lg animate-pulse-once">
-                      <div className="absolute -top-10 left-0 bg-emerald-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded leading-tight">
-                         OBJECT_DETECTED: {detectedItem.confidence}%
-                      </div>
-                      {/* Corner Accents */}
-                      <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-white" />
-                      <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-white" />
-                      <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-white" />
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-white" />
-                   </div>
-                 )}
-              </div>
+        <Card className="lg:col-span-3 relative overflow-hidden border-zinc-800 bg-black aspect-video flex items-center justify-center group">
+            {isScanning && isConnected ? (
+                /* Real MJPEG Stream from Python Backend */
+                <img 
+                    src="http://localhost:8000/video_feed" 
+                    alt="AI Vision Feed" 
+                    className="w-full h-full object-cover"
+                />
+            ) : (
+                <div className="flex flex-col items-center gap-4 text-zinc-700">
+                    <Focus className="h-16 w-16" />
+                    <p className="text-sm font-medium uppercase tracking-widest">
+                        {!isScanning ? "Scanner Disabled" : "Waiting for backend..."}
+                    </p>
+                </div>
             )}
             
-            <div className="flex flex-col items-center gap-4 text-zinc-700">
-               <Focus className="h-16 w-16" />
-               <p className="text-sm font-medium uppercase tracking-widest">{isScanning ? "Camera Feed Active" : "Camera Feed Paused"}</p>
-            </div>
-            
-            {/* Stats Overlay */}
-            <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md border border-zinc-800 p-3 rounded-lg flex flex-col gap-1 text-[10px] font-mono text-emerald-500">
-               <div className="flex justify-between gap-6"><span>FPS:</span><span>60</span></div>
-               <div className="flex justify-between gap-6"><span>LATENCY:</span><span>12ms</span></div>
-               <div className="flex justify-between gap-6"><span>BUFFER:</span><span>OK</span></div>
-            </div>
+            {/* HUD Overlay */}
+            {isScanning && isConnected && (
+              <div className="absolute inset-0 pointer-events-none p-6">
+                 <div className="flex justify-between items-start">
+                    <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg p-2 flex flex-col gap-1 text-[10px] font-mono text-white/50">
+                        <div className="flex justify-between gap-4"><span>RESOL:</span><span>640x480</span></div>
+                        <div className="flex justify-between gap-4"><span>ENGINE:</span><span className="text-emerald-400">YOLOv8n</span></div>
+                    </div>
+                 </div>
+              </div>
+            )}
         </Card>
 
-        {/* Detection Metadata */}
-        <div className="space-y-6">
-           <Card className="border-zinc-800 bg-zinc-900/50 backdrop-blur-xl h-full">
-              <CardHeader>
+        {/* Global Detections Sidebar */}
+        <div className="lg:col-span-2 space-y-6">
+           <Card className="border-zinc-800 bg-zinc-900/50 backdrop-blur-xl h-full flex flex-col">
+              <CardHeader className="flex-none">
                  <CardTitle className="text-lg flex items-center gap-2">
                     <Zap className="h-4 w-4 text-yellow-500" />
-                    Detection Results
+                    Active Detections ({detectedItems.length})
                  </CardTitle>
-                 <CardDescription>Mapped database entries for current frame.</CardDescription>
+                 <CardDescription>Live mapped telemetry from current frame.</CardDescription>
               </CardHeader>
-              <CardContent>
-                 {detectedItem ? (
-                    <div className="space-y-6">
-                       <div className="flex items-start justify-between">
-                          <div>
-                             <h3 className="text-xl font-bold">{detectedItem.name}</h3>
-                             <p className="text-sm text-zinc-500">{detectedItem.id}</p>
+              <CardContent className="flex-1 overflow-auto">
+                 {detectedItems.length > 0 ? (
+                    <div className="space-y-4">
+                       {detectedItems.map((item, idx) => (
+                          <div key={idx} className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/80 hover:bg-zinc-950 transition-colors group">
+                             <div className="flex items-start justify-between mb-3">
+                                <div>
+                                   <h3 className="font-bold text-white group-hover:text-emerald-400 transition-colors uppercase tracking-tight">{item.product_name}</h3>
+                                   <p className="text-[10px] uppercase font-mono text-zinc-600">{item.item_id}</p>
+                                </div>
+                                <Badge className={item.alerts.length > 0 ? "bg-red-500/20 text-red-500 border-red-500/30" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"}>
+                                   {item.alerts.length > 0 ? "Alert Active" : "Healthy"}
+                                </Badge>
+                             </div>
+                             
+                             {item.alerts.length > 0 && (
+                                <div className="space-y-1.5">
+                                   {item.alerts.map((al: any, aIdx: number) => (
+                                      <div key={aIdx} className="flex items-center gap-2 text-xs text-red-400 bg-red-400/5 p-2 rounded-md border border-red-400/10">
+                                         <AlertTriangle className="h-3 w-3" />
+                                         {al.alert_type.replace('_', ' ')}: {al.alert_message}
+                                      </div>
+                                   ))}
+                                </div>
+                             )}
                           </div>
-                          <Badge variant="success" className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-                             Healthy
-                          </Badge>
-                       </div>
-                       
-                       <div className="grid grid-cols-2 gap-4 text-sm font-sans">
-                          <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-950/50">
-                             <div className="text-zinc-500 text-xs mb-1">Category</div>
-                             <div className="font-medium">{detectedItem.category}</div>
-                          </div>
-                          <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-950/50">
-                             <div className="text-zinc-500 text-xs mb-1">Stock Level</div>
-                             <div className="font-medium">1,200 Packs</div>
-                          </div>
-                          <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-950/50">
-                             <div className="text-zinc-500 text-xs mb-1">Last Synced</div>
-                             <div className="font-medium">2 mins ago</div>
-                          </div>
-                          <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-950/50">
-                             <div className="text-zinc-500 text-xs mb-1">Location</div>
-                             <div className="font-medium">WH-B / Shelf 12</div>
-                          </div>
-                       </div>
-                       
-                       <div className="pt-4 flex gap-2">
-                          <Button className="flex-1">Update Stock</Button>
-                          <Button variant="outline" className="flex-1">View Full History</Button>
-                       </div>
+                       ))}
                     </div>
                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                       <Scan className="h-12 w-12 text-zinc-800 mb-4 animate-pulse" />
-                       <p className="text-zinc-500 text-sm max-w-[200px]">Scanning for items with QR/RFID markers...</p>
+                    <div className="flex flex-col items-center justify-center h-full py-12 text-center opacity-40">
+                       <Scan className="h-12 w-12 mb-4 animate-pulse" />
+                       <p className="text-zinc-500 text-sm font-sans max-w-[200px]">Waiting for camera input markers...</p>
                     </div>
                  )}
               </CardContent>
            </Card>
         </div>
       </div>
-      
-      <style jsx global>{`
-        @keyframes scanline {
-          0% { transform: translateY(-200%); }
-          100% { transform: translateY(200%); }
-        }
-        .animate-scan-line {
-          animation: scanline 3s linear infinite;
-        }
-        @keyframes pulse-once {
-          0% { border-color: rgba(16, 185, 129, 0); }
-          50% { border-color: rgba(16, 185, 129, 1); }
-          100% { border-color: rgba(16, 185, 129, 0.5); }
-        }
-        .animate-pulse-once {
-          animation: pulse-once 1s ease-out forwards;
-        }
-      `}</style>
     </div>
   )
 }
