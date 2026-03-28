@@ -6,27 +6,30 @@ FastAPI server to expose SmartStock AI Vision capabilities to the Next.js fronte
 import cv2
 import logging
 import asyncio
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Body, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import threading
 import json
 import time
+import sys
+from pydantic import BaseModel
+from typing import Optional
 
 # Add project root to path so imports work
-import sys
 sys.path.insert(0, str(Path(__file__).parent))
 
 from core.database import DatabaseManager
 from core.scanner import InventoryScanner
 from core.alerts import AlertManager
+from core.qr_generator import QRGenerator
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("smartstock-server")
-from fastapi.middleware.cors import CORSMiddleware
 
-# ...
 app = FastAPI(title="SmartStock AI Vision API")
 
 app.add_middleware(
@@ -42,6 +45,12 @@ db_path = Path("data") / "inventory.db"
 db = DatabaseManager(str(db_path))
 alert_mgr = AlertManager(db)
 scanner = InventoryScanner(db_manager=db, alert_manager=alert_mgr, camera_index=0)
+qr_gen = QRGenerator(output_dir="labels")
+
+# Serve labels as static files
+labels_path = Path("labels")
+labels_path.mkdir(parents=True, exist_ok=True)
+app.mount("/labels", StaticFiles(directory="labels"), name="labels")
 
 # Track connected clients for WebSocket
 class ConnectionManager:
@@ -116,6 +125,65 @@ async def broadcast_scan_data():
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "SmartStock AI Vision API is running"}
+
+class ItemCreate(BaseModel):
+    product_name: str
+    category: str
+    supplier_name: str
+    batch_number: str
+    unit_of_measure: str
+    quantity: int
+    min_stock_level: int
+    shelf_location: str
+    entry_date: str
+    expiry_date: Optional[str] = None
+    manufacture_date: Optional[str] = None
+    unit_price: Optional[float] = 0.0
+    notes: Optional[str] = ""
+
+@app.post("/items")
+async def create_item(item: ItemCreate, print_label: bool = False):
+    """Create a new item, generate QR label, and optionally print."""
+    try:
+        # 1. Add to database
+        item_dict = item.dict()
+        item_id = db.add_item(item_dict)
+        
+        # 2. Generate QR Label
+        label_path = qr_gen.generate_qr(
+            item_id=item_id,
+            qr_data=item_id,
+            product_name=item.product_name,
+            expiry_date=item.expiry_date,
+            shelf_location=item.shelf_location,
+            batch_number=item.batch_number
+        )
+        
+        # 3. Print if requested
+        if print_label:
+            qr_gen.print_label(item_id)
+            
+        return {
+            "status": "success",
+            "item_id": item_id,
+            "label_url": f"/labels/{item_id}.png"
+        }
+    except Exception as e:
+        logger.error(f"Error creating item: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/items")
+async def get_items():
+    """List all items."""
+    return db.get_all_items()
+
+@app.get("/items/{item_id}")
+async def get_item(item_id: str):
+    """Get item details."""
+    item = db.get_item_by_id(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return item
 
 def gen_frames():
     """Generator for MJPEG stream."""
