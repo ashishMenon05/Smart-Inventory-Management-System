@@ -1,16 +1,17 @@
-import { PrismaClient } from '../generated/client'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
+import { PrismaClient } from "../generated/client";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 
-const connectionString = process.env.DATABASE_URL || "file:../backend/data/inventory.db"
+const connectionString =
+  process.env.DATABASE_URL || "file:../backend/data/inventory.db";
 
 const adapter = new PrismaBetterSqlite3({
-  url: connectionString
-})
+  url: connectionString,
+});
 
-const prisma = new PrismaClient({ adapter })
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Seeding demo data...')
+  console.log("🌱 Seeding demo data...");
 
   const demoItems = [
     {
@@ -27,9 +28,9 @@ async function main() {
       entry_date: new Date("2024-09-15"),
       expiry_date: new Date("2026-03-31"),
       manufacture_date: new Date("2024-09-01"),
-      unit_price: 2.50,
+      unit_price: 2.5,
       notes: "Store below 25°C",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00002",
@@ -45,9 +46,9 @@ async function main() {
       entry_date: new Date("2023-11-01"),
       expiry_date: new Date("2025-12-01"),
       manufacture_date: new Date("2023-10-15"),
-      unit_price: 8.00,
+      unit_price: 8.0,
       notes: "Antibiotic — prescription required",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00003",
@@ -63,9 +64,9 @@ async function main() {
       entry_date: new Date("2024-05-20"),
       expiry_date: new Date("2027-06-30"),
       manufacture_date: new Date("2024-05-01"),
-      unit_price: 120.00,
+      unit_price: 120.0,
       notes: "70% isopropyl alcohol",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00004",
@@ -81,9 +82,9 @@ async function main() {
       entry_date: new Date("2024-08-10"),
       expiry_date: new Date("2026-08-15"),
       manufacture_date: new Date("2024-08-01"),
-      unit_price: 95.00,
+      unit_price: 95.0,
       notes: "Keep dry",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00005",
@@ -99,9 +100,9 @@ async function main() {
       entry_date: new Date("2024-12-01"),
       expiry_date: null,
       manufacture_date: new Date("2024-11-15"),
-      unit_price: 299.00,
+      unit_price: 299.0,
       notes: "1.5m length, nylon braided",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00006",
@@ -117,9 +118,9 @@ async function main() {
       entry_date: new Date("2024-07-15"),
       expiry_date: null,
       manufacture_date: null,
-      unit_price: 350.00,
+      unit_price: 350.0,
       notes: "75 GSM, bright white",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00007",
@@ -135,9 +136,9 @@ async function main() {
       entry_date: new Date("2024-10-15"),
       expiry_date: new Date("2026-04-02"),
       manufacture_date: new Date("2024-09-30"),
-      unit_price: 4.50,
+      unit_price: 4.5,
       notes: "Effervescent tablets",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00008",
@@ -153,9 +154,9 @@ async function main() {
       entry_date: new Date("2024-09-20"),
       expiry_date: new Date("2026-09-20"),
       manufacture_date: new Date("2024-09-01"),
-      unit_price: 180.00,
+      unit_price: 180.0,
       notes: "Cold-pressed, virgin",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00009",
@@ -171,9 +172,9 @@ async function main() {
       entry_date: new Date("2024-03-10"),
       expiry_date: null,
       manufacture_date: null,
-      unit_price: 80.00,
+      unit_price: 80.0,
       notes: "Black, Blue, Red, Green",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00010",
@@ -189,9 +190,9 @@ async function main() {
       entry_date: new Date("2023-11-20"),
       expiry_date: new Date("2025-11-30"),
       manufacture_date: new Date("2023-11-01"),
-      unit_price: 95.00,
+      unit_price: 95.0,
       notes: "Pine fragrance",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00011",
@@ -207,9 +208,9 @@ async function main() {
       entry_date: new Date("2024-06-05"),
       expiry_date: null,
       manufacture_date: null,
-      unit_price: 45.00,
+      unit_price: 45.0,
       notes: "80mm x 50m roll",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00012",
@@ -225,9 +226,9 @@ async function main() {
       entry_date: new Date("2024-11-01"),
       expiry_date: new Date("2026-12-31"),
       manufacture_date: new Date("2024-10-20"),
-      unit_price: 120.00,
+      unit_price: 120.0,
       notes: "Masala flavour",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00013",
@@ -243,9 +244,9 @@ async function main() {
       entry_date: new Date("2024-08-20"),
       expiry_date: new Date("2028-01-01"),
       manufacture_date: new Date("2024-08-01"),
-      unit_price: 250.00,
+      unit_price: 250.0,
       notes: "1.5V alkaline",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00014",
@@ -261,9 +262,9 @@ async function main() {
       entry_date: new Date("2024-03-15"),
       expiry_date: new Date("2026-06-30"),
       manufacture_date: new Date("2024-03-01"),
-      unit_price: 85.00,
+      unit_price: 85.0,
       notes: "Lavender fragrance, anti-bacterial",
-      status: "active"
+      status: "active",
     },
     {
       item_id: "ITEM-00015",
@@ -279,28 +280,28 @@ async function main() {
       entry_date: new Date("2024-04-10"),
       expiry_date: null,
       manufacture_date: null,
-      unit_price: 150.00,
+      unit_price: 150.0,
       notes: "Includes 3 boxes of pins",
-      status: "active"
-    }
-  ]
+      status: "active",
+    },
+  ];
 
   for (const item of demoItems) {
     await prisma.item.upsert({
       where: { item_id: item.item_id },
       update: item,
       create: item,
-    })
+    });
   }
 
-  console.log('✅ Seeding complete: 15 items created/updated.')
+  console.log("✅ Seeding complete: 15 items created/updated.");
 }
 
 main()
   .catch((e) => {
-    console.error(e)
-    process.exit(1)
+    console.error(e);
+    process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect()
-  })
+    await prisma.$disconnect();
+  });
