@@ -18,7 +18,7 @@ export default function ScanPage() {
 
     const connect = () => {
       try {
-        ws = new WebSocket('ws://localhost:8000/ws/scan');
+        ws = new WebSocket('ws://localhost:8001/ws/scan');
         
         ws.onopen = () => {
           console.log('Connected to AI Vision Backend');
@@ -89,7 +89,7 @@ export default function ScanPage() {
             {isScanning && isConnected ? (
                 /* Real MJPEG Stream from Python Backend */
                 <img 
-                    src="http://localhost:8000/video_feed" 
+                    src="http://localhost:8001/video_feed" 
                     alt="AI Vision Feed" 
                     className="w-full h-full object-cover"
                 />

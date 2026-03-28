@@ -1,0 +1,41 @@
+INFO:core.scanner:YOLOv8 Nano model loaded successfully.
+INFO:core.scanner:Using cv2.QRCodeDetectorAruco for multi-QR detection.
+/Users/ash/coding/Smart-Inventory-Management-System/backend/server.py:72: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/Users/ash/coding/Smart-Inventory-Management-System/backend/server.py:78: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("shutdown")
+INFO:     Started server process [56077]
+INFO:     Waiting for application startup.
+INFO:core.scanner:Camera opened successfully.
+INFO:core.scanner:Camera capture thread started.
+INFO:smartstock-server:Scanner thread started.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     127.0.0.1:49441 - "GET /video_feed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49442 - "WebSocket /ws/scan" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:49447 - "WebSocket /ws/scan" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:49479 - "WebSocket /ws/scan" [accepted]
+INFO:     connection open
+INFO:     connection closed
+INFO:     127.0.0.1:49612 - "WebSocket /ws/scan" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:49613 - "GET /video_feed HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     127.0.0.1:49618 - "WebSocket /ws/scan" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:49619 - "GET /video_feed HTTP/1.1" 200 OK
+INFO:     connection closed
